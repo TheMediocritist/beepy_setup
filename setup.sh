@@ -12,6 +12,9 @@ sudo apt-get -y install git raspberrypi-kernel-headers < "/dev/null" || { echo "
 echo "Customising ~/.bashrc..."
 sudo cp ~/beepberry_setup/misc/.bashrc ~/
 
+echo "Downloading Beepberry software..."
+git clone https://github.com/TheMediocritist/beepberry_setup
+
 echo "Compiling and installing display driver..."
 cd ~/beepberry_setup/display/
 make || { echo "Error: Failed to compile display driver."; exit 1; }
@@ -32,6 +35,18 @@ sudo sed -i ' 1 s/.*/& fbcon=map:10 fbcon=font:VGA8x16/' /boot/cmdline.txt || { 
 
 echo "Connecting to i4 bluetooth keyboard..."
 # echo "connect AA:BB:CC:DD:EE:FF \nquit" | bluetoothctl
+
+echo "Installing raspi2fb..."
+sudo apt-get -y install cmake 
+sudo apt-get -y install libbsd-dev
+cd ~/beepberry_setup/raspi2fb/
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+sudo cp ../raspi2fb.init.d /etc/init.d/raspi2fb
+sudo update-rc.d raspi2fb defaults
 
 echo "Rebooting..."
 sudo shutdown -r now || { echo "Error: Failed to reboot."; exit 1; }
