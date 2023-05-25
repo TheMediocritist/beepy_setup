@@ -18,10 +18,10 @@ VIN     | 3.3V
 GND     | GND       
 SCLK    | 11 (SCLK) 
 MOSI    | 10 (MOSI) 
-CS      | 23        
+CS      | 8        
 EXTMD   | 3.3V      
-DISP    | 24        
-EXTIN   | 25        
+DISP    | 22        
+EXTIN   | 23        
 
 ## Compile/Install the driver
 Verify that you have the linux kernel headers for your platform. For the RasPi these can be obtained by:
