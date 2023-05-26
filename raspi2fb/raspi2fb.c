@@ -344,7 +344,7 @@ main(
                   program,
                   "assumption failed ... framebuffer lines are padded");
 
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+        // exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     if ((vinfo.xres % 16) != 0)
@@ -353,7 +353,7 @@ main(
                   program,
                   "framebuffer width must be a multiple of 16");
 
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+        //exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     if (vinfo.bits_per_pixel != 16)
@@ -362,7 +362,7 @@ main(
                   program,
                   "framebuffer is not 16 bits per pixel");
 
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+        //exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
 
