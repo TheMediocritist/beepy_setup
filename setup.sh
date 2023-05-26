@@ -33,6 +33,10 @@ sudo sed -i ' 1 s/.*/& fbcon=map:10 fbcon=font:VGA8x16/' /boot/cmdline.txt || { 
 # cd ~/beepberry_setup/keyboard
 # ./installer.sh --BBQ20KBD_TRACKPAD_USE BBQ20KBD_TRACKPAD_AS_KEYS --BBQX0KBD_INT BBQX0KBD_USE_INT || { echo "Error: Failed to install keyboard device driver."; exit 1; }
 
+echo "Inverting terminal display..."
+setterm --inversescreen=on --bold=off -store
+
+
 echo "Connecting to i4 bluetooth keyboard..."
 # echo "connect 26:01:06:00:04:63 \nquit" | bluetoothctl
 
