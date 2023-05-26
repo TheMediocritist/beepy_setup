@@ -127,8 +127,18 @@ main(
     uint16_t copyRectX = 0;
     uint16_t copyRectY = 0;
     uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
+    
     const char *pidfile = NULL;
     const char *device = DEFAULT_DEVICE;
+    
+    //---------------------------------------------------------------------
+    // setPixel function as a reminder from https://www.i-programmer.info/programming/cc/12839-applying-c-framebuffer-graphics.html?start=1
+    void setPixel(uint32_t x, uint32_t y, uint32_t r, uint32_t g, uint32_t b, uint32_t a) 
+    {
+        uint32_t pixel = (r << vinfo.red.offset)|(g << vinfo.green.offset)|(b << vinfo.blue.offset)|(a << vinfo.transp.offset);
+        uint32_t location = x*vinfo.bits_per_pixel/8 + y*finfo.line_length;
+        *((uint32_t*) (fbp + location)) = pixel;
+    }
 
     //---------------------------------------------------------------------
 
