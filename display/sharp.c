@@ -268,7 +268,7 @@ int thread_fn(void* v)
     // Main loop
     while (!kthread_should_stop()) 
     {
-        msleep(50);
+        msleep(10);
 
         for(y=0 ; y < 240 ; y++)
         {
