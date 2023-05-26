@@ -32,6 +32,10 @@ int main(int argc, char** argv) {
                PROT_WRITE, MAP_SHARED, fd, 0);
  uint32_t x = 0;
  uint32_t y = 400;
+ uint32_t r = 0;
+ uint32_t g = 0;
+ uint32_t b = 0;
+ uint32_t a = 0;
  for (x = 0; x < 800; x++) {
    setPixel(x, y, 0xFF, 0xFF, 0x00, 0xFF);
  }   
