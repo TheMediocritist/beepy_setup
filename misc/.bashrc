@@ -193,7 +193,7 @@ function beepberry_welcome() {
     local i
     tput clear
     for i in "${!logo[@]}"; do
-        out+="${logo[$i]}"
+        out+=" ${logo[$i]}"
         case "$i" in
             0)
                 out+="${fgwht}$(date)"
