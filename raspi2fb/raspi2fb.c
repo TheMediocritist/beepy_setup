@@ -59,7 +59,7 @@
 
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_FPS 10
+#define DEFAULT_FPS 30
 
 //-------------------------------------------------------------------------
 
