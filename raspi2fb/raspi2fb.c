@@ -390,7 +390,7 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint16_t *fbp = mmap(0,
+    uint8_t *fbp = mmap(0,
                          finfo.smem_len,
                          PROT_READ | PROT_WRITE,
                          MAP_SHARED,
@@ -408,7 +408,7 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint32_t image_ptr;
+    uint8_t image_ptr;
 
     DISPMANX_RESOURCE_HANDLE_T resourceHandle;
     VC_RECT_T rect;
@@ -430,13 +430,13 @@ main(
     //---------------------------------------------------------------------
 
     //uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
-    uint32_t len = copyRect ? (info.width * info.height) : finfo.smem_len;
+    uint8_t len = copyRect ? (info.width * info.height) : finfo.smem_len;
 
-    uint16_t *backCopyP = malloc(len);
-    uint16_t *frontCopyP = malloc(len);
+    uint8_t *backCopyP = malloc(len);
+    uint8_t *frontCopyP = malloc(len);
 
     //uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
-    uint32_t line_len = copyRect ? (info.width) : finfo.line_length;
+    uint8_t line_len = copyRect ? (info.width) : finfo.line_length;
 
     if ((backCopyP == NULL) || (frontCopyP == NULL))
     {
