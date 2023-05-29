@@ -59,7 +59,7 @@
 
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_FPS 10
+#define DEFAULT_FPS 30
 
 //-------------------------------------------------------------------------
 
@@ -119,8 +119,6 @@ main(
     bool isDaemon = false;
     bool copyRect = false;
     bool once = false;
-    uint16_t copyRectX = 0;
-    uint16_t copyRectY = 0;
     uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
     const char *pidfile = NULL;
     const char *device = DEFAULT_DEVICE;
@@ -146,62 +144,40 @@ main(
     {
         switch (opt)
         {
-        case 'd':
-
-            isDaemon = true;
-            break;
-
-        case 'f':
-
-            fps = atoi(optarg);
-
-            if (fps > 0)
-            {
-                frameDuration = 1000000 / fps;
-            }
-            else
-            {
-                fps = 1000000 / frameDuration;
-            }
-
-            break;
-
-        case 'h':
-
-            printUsage(stdout, program);
-            exit(EXIT_SUCCESS);
-
-            break;
-
-        case 'n':
-
-            displayNumber = atoi(optarg);
-
-            break;
-
-        case 'p':
-
-            pidfile = optarg;
-
-            break;
-
-        case 'o':
-
-            once = true;
-            break;
-
-        case 'D':
-
-            device = optarg;
-
-            break;
-
-        default:
-
-            printUsage(stderr, program);
-            exit(EXIT_FAILURE);
-
-            break;
+            case 'd':
+                isDaemon = true;
+                break;
+            case 'f':
+                fps = atoi(optarg);
+                if (fps > 0)
+                {
+                    frameDuration = 1000000 / fps;
+                }
+                else
+                {
+                    fps = 1000000 / frameDuration;
+                }
+                break;
+            case 'h':
+                printUsage(stdout, program);
+                exit(EXIT_SUCCESS);
+                break;
+            case 'n':
+                displayNumber = atoi(optarg);
+                break;
+            case 'p':
+                pidfile = optarg;
+                break;
+            case 'o':
+                once = true;
+                break;
+            case 'D':
+                device = optarg;
+                break;
+            default:
+                printUsage(stderr, program);
+                exit(EXIT_FAILURE);
+                break;
         }
     }
 
@@ -229,7 +205,6 @@ main(
         if (daemon(0, 0) == -1)
         {
             fprintf(stderr, "Cannot daemonize\n");
-
             exitAndRemovePidFile(EXIT_FAILURE, pfh);
         }
 
@@ -284,7 +259,6 @@ main(
     //---------------------------------------------------------------------
 
     int fbfd = open(device, O_RDWR);
-
     if (fbfd == -1)
     {
         perrorLog(isDaemon, program, "cannot open framebuffer device");
@@ -292,7 +266,6 @@ main(
     }
 
     struct fb_fix_screeninfo finfo;
-
     if (ioctl(fbfd, FBIOGET_FSCREENINFO, &finfo) == -1)
     {
         perrorLog(isDaemon,
@@ -302,19 +275,17 @@ main(
     }
 
     struct fb_var_screeninfo vinfo;
-
     if (ioctl(fbfd, FBIOGET_VSCREENINFO, &vinfo) == -1)
     {
         perrorLog(isDaemon,
                   program,
                   "cannot get framebuffer variable information");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     //---------------------------------------------------------------------
 
-    if ((vinfo.xres) != finfo.line_length)
+    if ((vinfo.xres * 2) != finfo.line_length)
     {
         perrorLog(isDaemon,
                   program,
@@ -327,7 +298,7 @@ main(
         perrorLog(isDaemon,
                   program,
                   "framebuffer width must be a multiple of 16");
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
+        //exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     if (vinfo.bits_per_pixel != 16)
@@ -335,26 +306,26 @@ main(
         perrorLog(isDaemon,
                   program,
                   "framebuffer is not 16 bits per pixel");
-
         //exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     //---------------------------------------------------------------------
 
-    uint16_t *fbp = mmap(0,
+    uint16_t *framebuffer = mmap(0,
                          finfo.smem_len,
                          PROT_READ | PROT_WRITE,
                          MAP_SHARED,
                          fbfd,
                          0);
 
-    if (fbp == MAP_FAILED)
+    if (framebuffer == MAP_FAILED)
     {
         perrorLog(isDaemon, program, "cannot map framebuffer into memory");
+
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
-    memset(fbp, 0, finfo.smem_len);
+    memset(framebuffer, 0, finfo.smem_len);
 
     //---------------------------------------------------------------------
 
@@ -363,42 +334,40 @@ main(
     DISPMANX_RESOURCE_HANDLE_T resourceHandle;
     VC_RECT_T rect;
 
-    resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_8BPP,
-                                                 vinfo.xres,
-                                                 vinfo.yres,
-                                                 &image_ptr);
+    resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
+                                                    vinfo.xres,
+                                                    vinfo.yres,
+                                                    &image_ptr);
     vc_dispmanx_rect_set(&rect, 0, 0, vinfo.xres, vinfo.yres);
 
     //---------------------------------------------------------------------
 
-    
+    // create offscreen buffers for old & new data storage
     uint32_t len = finfo.smem_len;
 
-    uint8_t* backCopyP = malloc(len);
-    uint8_t* frontCopyP = malloc(len);
-
-    memset(backCopyP, 0, len); //? This is new?
+    uint16_t *oldData = malloc(len);
+    uint16_t *newData = malloc(len);
 
     uint32_t line_len = finfo.line_length;
 
-    if ((backCopyP == NULL) || (frontCopyP == NULL))
+    if ((oldData == NULL) || (newData == NULL))
     {
         perrorLog(isDaemon, program, "cannot allocate offscreen buffers");
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
-    memset(backCopyP, 0, finfo.line_length * vinfo.yres);
+    memset(oldData, 0, finfo.line_length * vinfo.yres);
 
     //---------------------------------------------------------------------
 
-        messageLog(isDaemon,
-                   program,
-                   LOG_INFO,
-                   "raspi2fb normal scaling mode, copying from source fb[%dx%d] to dest fb [%dx%d]",
-                   info.width,
-                   info.height,
-                   vinfo.xres,
-                   vinfo.yres);
+    messageLog(isDaemon,
+                program,
+                LOG_INFO,
+                "raspi2fb normal scaling mode, copying from source fb[%dx%d] to dest fb [%dx%d]",
+                info.width,
+                info.height,
+                vinfo.xres,
+                vinfo.yres);
 
     //---------------------------------------------------------------------
 
@@ -421,29 +390,17 @@ main(
 
         vc_dispmanx_resource_read_data(resourceHandle,
                                        &rect,
-                                       frontCopyP,
+                                       newData,
                                        line_len);
 
         // normal scaled copy mode
-        uint16_t *fbIter = fbp;
-        uint16_t *frontCopyIter = frontCopyP;
-        uint16_t *backCopyIter = backCopyP;
+        uint16_t *fbIter = framebuffer;
+        uint16_t *frontCopyIter = newData;
+        uint16_t *backCopyIter = oldData;
 
         uint32_t pixel;
         for (pixel = 0 ; pixel < pixels ; pixel++)
         {
-             // Extract RGB components from the pixel
-            uint8_t red = (*frontCopyIter >> 5) & 0x07;
-            uint8_t green = (*frontCopyIter >> 2) & 0x07;
-            uint8_t blue = *frontCopyIter & 0x03;
-
-            // Calculate grayscale value
-            uint8_t grayscale = (red + green + blue) / 3;
-
-            // Assign grayscale value
-            *frontCopyIter = grayscale;
-            
-            // Check if pixel has been updated, and if it has, copy it to the framebuffer
             if (*frontCopyIter != *backCopyIter)
             {
                 *fbIter = *frontCopyIter;
@@ -454,10 +411,9 @@ main(
             ++fbIter;
         }
 
-        uint16_t *tmp = backCopyP;
-        backCopyP = frontCopyP;
-        frontCopyP = tmp;
-
+        uint16_t *tmp = oldData;
+        oldData = newData;
+        newData = tmp;
 
         //-----------------------------------------------------------------
 
@@ -484,10 +440,12 @@ main(
 
     //---------------------------------------------------------------------
 
-    free(frontCopyP);
-    free(backCopyP);
-    memset(fbp, 0, finfo.smem_len);
-    munmap(fbp, finfo.smem_len);
+    free(newData);
+    free(oldData);
+
+    memset(framebuffer, 0, finfo.smem_len);
+    munmap(framebuffer, finfo.smem_len);
+
     close(fbfd);
 
     //---------------------------------------------------------------------
