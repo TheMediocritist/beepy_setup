@@ -59,7 +59,7 @@
 
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_FPS 50
+#define DEFAULT_FPS 10
 
 //-------------------------------------------------------------------------
 
@@ -353,7 +353,7 @@ main(
                   program,
                   "framebuffer width must be a multiple of 16");
 
-        //exitAndRemovePidFile(EXIT_FAILURE, pfh);
+        exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     if (vinfo.bits_per_pixel != 16)
@@ -390,7 +390,7 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint8_t *fbp = mmap(0,
+    uint16_t *fbp = mmap(0,
                          finfo.smem_len,
                          PROT_READ | PROT_WRITE,
                          MAP_SHARED,
@@ -414,13 +414,13 @@ main(
     VC_RECT_T rect;
 
     if (copyRect) {
-        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_8BPP,
+        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
                                                      info.width,
                                                      info.height,
                                                      &image_ptr);
         vc_dispmanx_rect_set(&rect, 0, 0, info.width, info.height);
     } else {
-        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_8BPP,
+        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
                                                      vinfo.xres,
                                                      vinfo.yres,
                                                      &image_ptr);
@@ -430,13 +430,11 @@ main(
     //---------------------------------------------------------------------
 
     uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
-    //uint8_t len = copyRect ? (info.width * info.height) : finfo.smem_len;
 
-    uint8_t *backCopyP = malloc(len);
-    uint8_t *frontCopyP = malloc(len);
+    uint16_t *backCopyP = malloc(len);
+    uint16_t *frontCopyP = malloc(len);
 
     uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
-    //uint8_t line_len = copyRect ? (info.width) : finfo.line_length;
 
     if ((backCopyP == NULL) || (frontCopyP == NULL))
     {
@@ -501,12 +499,12 @@ main(
         if (copyRect)
         {
             // rectangle copying mode - eliminated double buffering, not sure why it is done in 'normal' mode
-            for (uint8_t pixel_y = 0 ; pixel_y < vinfo.yres ; pixel_y++)
+            for (uint16_t pixel_y = 0 ; pixel_y < vinfo.yres ; pixel_y++)
             {
-                uint8_t* rowIter = frontCopyP + ((pixel_y + copyRectY) * info.width) + copyRectX;
-                uint8_t* fbIter = fbp + (pixel_y * vinfo.xres);
+                uint16_t* rowIter = frontCopyP + ((pixel_y + copyRectY) * info.width) + copyRectX;
+                uint16_t* fbIter = fbp + (pixel_y * vinfo.xres);
 
-                for (uint8_t pixel_x = 0 ; pixel_x < vinfo.xres ; pixel_x++)
+                for (uint16_t pixel_x = 0 ; pixel_x < vinfo.xres ; pixel_x++)
                 {
                     *(fbIter++) = *(rowIter++);
                 }
@@ -515,11 +513,11 @@ main(
         else
         {
             // normal scaled copy mode
-            uint8_t *fbIter = fbp;
-            uint8_t *frontCopyIter = frontCopyP;
-            uint8_t *backCopyIter = backCopyP;
+            uint16_t *fbIter = fbp;
+            uint16_t *frontCopyIter = frontCopyP;
+            uint16_t *backCopyIter = backCopyP;
 
-            uint8_t pixel;
+            uint32_t pixel;
             for (pixel = 0 ; pixel < pixels ; pixel++)
             {
                 if (*frontCopyIter != *backCopyIter)
@@ -532,7 +530,7 @@ main(
                 ++fbIter;
             }
 
-            uint8_t *tmp = backCopyP;
+            uint16_t *tmp = backCopyP;
             backCopyP = frontCopyP;
             frontCopyP = tmp;
         }
