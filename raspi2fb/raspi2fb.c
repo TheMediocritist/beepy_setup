@@ -82,11 +82,6 @@ printUsage(
     fprintf(fp, " (default %d)\n", DEFAULT_DISPLAY_NUMBER);
     fprintf(fp, "    --fps <fps> - set desired frames per second");
     fprintf(fp, " (default %d frames per second)\n", DEFAULT_FPS);
-    fprintf(fp, "    --copyrect - copy only a rectangle the same size as the dest framebuffer\n");
-    fprintf(fp, "    --rectx <x> - copy rectangle from source fb at <x> in copyrect mode");
-    fprintf(fp, " (default 0)\n");
-    fprintf(fp, "    --recty <y> - copy rectangle from source fb at <y> in copyrect mode");
-    fprintf(fp, " (default 0)\n");
     fprintf(fp, "    --pidfile <pidfile> - create and lock PID file");
     fprintf(fp, " (if being run as a daemon)\n");
     fprintf(fp, "    --once - copy only one time, then exit\n");
@@ -141,9 +136,6 @@ main(
         { "display", required_argument, NULL, 'n' },
         { "pidfile", required_argument, NULL, 'p' },
         { "device", required_argument, NULL, 'D' },
-        { "copyrect", no_argument, NULL, 'r' },
-        { "rectx", required_argument, NULL, 'x' },
-        { "recty", required_argument, NULL, 'y' },
         { "once", no_argument, NULL, 'o' },
         { NULL, no_argument, NULL, 0 }
     };
@@ -154,18 +146,6 @@ main(
     {
         switch (opt)
         {
-        case 'x':
-            copyRectX = atoi(optarg);
-            break;
-
-        case 'y':
-            copyRectY = atoi(optarg);
-            break;
-
-        case 'r':
-            copyRect = true;
-            break;
-
         case 'd':
 
             isDaemon = true;
@@ -266,7 +246,6 @@ main(
     if (signal(SIGINT, signalHandler) == SIG_ERR)
     {
         perrorLog(isDaemon, program, "installing SIGINT signal handler");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -275,7 +254,6 @@ main(
     if (signal(SIGTERM, signalHandler) == SIG_ERR)
     {
         perrorLog(isDaemon, program, "installing SIGTERM signal handler");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -310,7 +288,6 @@ main(
     if (fbfd == -1)
     {
         perrorLog(isDaemon, program, "cannot open framebuffer device");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -321,7 +298,6 @@ main(
         perrorLog(isDaemon,
                   program,
                   "cannot get framebuffer fixed information");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -338,12 +314,11 @@ main(
 
     //---------------------------------------------------------------------
 
-    if ((vinfo.xres * 2) != finfo.line_length)
+    if ((vinfo.xres) != finfo.line_length)
     {
         perrorLog(isDaemon,
                   program,
                   "assumption failed ... framebuffer lines are padded");
-
         //exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -352,7 +327,6 @@ main(
         perrorLog(isDaemon,
                   program,
                   "framebuffer width must be a multiple of 16");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -363,29 +337,6 @@ main(
                   "framebuffer is not 16 bits per pixel");
 
         //exitAndRemovePidFile(EXIT_FAILURE, pfh);
-    }
-
-
-    if (copyRectX > (info.width - vinfo.xres))
-    {
-        char s[80];
-        snprintf(s, 80, "rectx must be between 0 and %d for the configured framebuffers", info.width - vinfo.xres);
-        perrorLog(isDaemon,
-                  program,
-                  s);
-
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
-    }
-
-    if (copyRectY > (info.height - vinfo.yres))
-    {
-        char s[80];
-        snprintf(s, 80, "recty must be between 0 and %d for the configured framebuffers", info.height - vinfo.yres);
-        perrorLog(isDaemon,
-                  program,
-                  s);
-
-        exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     //---------------------------------------------------------------------
@@ -400,7 +351,6 @@ main(
     if (fbp == MAP_FAILED)
     {
         perrorLog(isDaemon, program, "cannot map framebuffer into memory");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
@@ -413,55 +363,34 @@ main(
     DISPMANX_RESOURCE_HANDLE_T resourceHandle;
     VC_RECT_T rect;
 
-    if (copyRect) {
-        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
-                                                     info.width,
-                                                     info.height,
-                                                     &image_ptr);
-        vc_dispmanx_rect_set(&rect, 0, 0, info.width, info.height);
-    } else {
-        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
-                                                     vinfo.xres,
-                                                     vinfo.yres,
-                                                     &image_ptr);
-        vc_dispmanx_rect_set(&rect, 0, 0, vinfo.xres, vinfo.yres);
-    }
+    resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_8BPP,
+                                                 vinfo.xres,
+                                                 vinfo.yres,
+                                                 &image_ptr);
+    vc_dispmanx_rect_set(&rect, 0, 0, vinfo.xres, vinfo.yres);
 
     //---------------------------------------------------------------------
 
-    uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
+    
+    uint32_t len = finfo.smem_len;
 
-    uint16_t *backCopyP = malloc(len);
-    uint16_t *frontCopyP = malloc(len);
+    uint8_t* backCopyP = malloc(len);
+    uint8_t* frontCopyP = malloc(len);
 
-    uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
+    memset(backCopyP, 0, len); //? This is new?
+
+    uint32_t line_len = finfo.line_length;
 
     if ((backCopyP == NULL) || (frontCopyP == NULL))
     {
         perrorLog(isDaemon, program, "cannot allocate offscreen buffers");
-
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
-    memset(backCopyP, 0, copyRect ? (line_len * info.height) : finfo.line_length * vinfo.yres);
+    memset(backCopyP, 0, finfo.line_length * vinfo.yres);
 
     //---------------------------------------------------------------------
 
-    if (copyRect)
-    {
-        messageLog(isDaemon,
-                   program,
-                   LOG_INFO,
-                   "raspi2fb copyrect mode, copying window from source fb[%dx%d @ %d,%d] to dest fb[%dx%d]",
-                   info.width,
-                   info.height,
-                   copyRectX,
-                   copyRectY,
-                   vinfo.xres,
-                   vinfo.yres);
-    }
-    else
-    {
         messageLog(isDaemon,
                    program,
                    LOG_INFO,
@@ -470,7 +399,6 @@ main(
                    info.height,
                    vinfo.xres,
                    vinfo.yres);
-    }
 
     //---------------------------------------------------------------------
 
@@ -496,44 +424,40 @@ main(
                                        frontCopyP,
                                        line_len);
 
-        if (copyRect)
+        // normal scaled copy mode
+        uint16_t *fbIter = fbp;
+        uint16_t *frontCopyIter = frontCopyP;
+        uint16_t *backCopyIter = backCopyP;
+
+        uint32_t pixel;
+        for (pixel = 0 ; pixel < pixels ; pixel++)
         {
-            // rectangle copying mode - eliminated double buffering, not sure why it is done in 'normal' mode
-            for (uint16_t pixel_y = 0 ; pixel_y < vinfo.yres ; pixel_y++)
+             // Extract RGB components from the pixel
+            uint8_t red = (*frontCopyIter >> 5) & 0x07;
+            uint8_t green = (*frontCopyIter >> 2) & 0x07;
+            uint8_t blue = *frontCopyIter & 0x03;
+
+            // Calculate grayscale value
+            uint8_t grayscale = (red + green + blue) / 3;
+
+            // Assign grayscale value
+            *frontCopyIter = grayscale;
+            
+            // Check if pixel has been updated, and if it has, copy it to the framebuffer
+            if (*frontCopyIter != *backCopyIter)
             {
-                uint16_t* rowIter = frontCopyP + ((pixel_y + copyRectY) * info.width) + copyRectX;
-                uint16_t* fbIter = fbp + (pixel_y * vinfo.xres);
-
-                for (uint16_t pixel_x = 0 ; pixel_x < vinfo.xres ; pixel_x++)
-                {
-                    *(fbIter++) = *(rowIter++);
-                }
-            }
-        }
-        else
-        {
-            // normal scaled copy mode
-            uint16_t *fbIter = fbp;
-            uint16_t *frontCopyIter = frontCopyP;
-            uint16_t *backCopyIter = backCopyP;
-
-            uint32_t pixel;
-            for (pixel = 0 ; pixel < pixels ; pixel++)
-            {
-                if (*frontCopyIter != *backCopyIter)
-                {
-                    *fbIter = *frontCopyIter;
-                }
-
-                ++frontCopyIter;
-                ++backCopyIter;
-                ++fbIter;
+                *fbIter = *frontCopyIter;
             }
 
-            uint16_t *tmp = backCopyP;
-            backCopyP = frontCopyP;
-            frontCopyP = tmp;
+            ++frontCopyIter;
+            ++backCopyIter;
+            ++fbIter;
         }
+
+        uint16_t *tmp = backCopyP;
+        backCopyP = frontCopyP;
+        frontCopyP = tmp;
+
 
         //-----------------------------------------------------------------
 
@@ -562,9 +486,7 @@ main(
 
     free(frontCopyP);
     free(backCopyP);
-
     memset(fbp, 0, finfo.smem_len);
-
     munmap(fbp, finfo.smem_len);
     close(fbfd);
 
