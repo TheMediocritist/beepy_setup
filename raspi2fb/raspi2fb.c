@@ -378,6 +378,7 @@ main(
 
     // pixels = count of destination framebuffer pixels
     uint32_t pixels = vinfo.xres * vinfo.yres;
+    printf("vinfo.xres=%u", vinfo.xres);
 
     while (run)
     {
