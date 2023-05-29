@@ -117,7 +117,6 @@ main(
     int fps = DEFAULT_FPS;
     suseconds_t frameDuration =  1000000 / fps;
     bool isDaemon = false;
-    bool copyRect = false;
     bool once = false;
     uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
     const char *pidfile = NULL;
@@ -258,15 +257,15 @@ main(
 
     //---------------------------------------------------------------------
 
-    int fbfd = open(device, O_RDWR);
-    if (fbfd == -1)
+    int fb1 = open(device, O_RDWR);
+    if (fb1 == -1)
     {
         perrorLog(isDaemon, program, "cannot open framebuffer device");
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
     struct fb_fix_screeninfo finfo;
-    if (ioctl(fbfd, FBIOGET_FSCREENINFO, &finfo) == -1)
+    if (ioctl(fb1, FBIOGET_FSCREENINFO, &finfo) == -1)
     {
         perrorLog(isDaemon,
                   program,
@@ -275,7 +274,7 @@ main(
     }
 
     struct fb_var_screeninfo vinfo;
-    if (ioctl(fbfd, FBIOGET_VSCREENINFO, &vinfo) == -1)
+    if (ioctl(fb1, FBIOGET_VSCREENINFO, &vinfo) == -1)
     {
         perrorLog(isDaemon,
                   program,
@@ -311,21 +310,21 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint16_t *framebuffer = mmap(0,
+    uint16_t *fb1_data = mmap(0,
                          finfo.smem_len,
                          PROT_READ | PROT_WRITE,
                          MAP_SHARED,
-                         fbfd,
+                         fb1,
                          0);
 
-    if (framebuffer == MAP_FAILED)
+    if (fb1_data == MAP_FAILED)
     {
         perrorLog(isDaemon, program, "cannot map framebuffer into memory");
 
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
-    memset(framebuffer, 0, finfo.smem_len);
+    memset(fb1_data, 0, finfo.smem_len);
 
     //---------------------------------------------------------------------
 
@@ -345,18 +344,18 @@ main(
     // create offscreen buffers for old & new data storage
     uint32_t len = finfo.smem_len;
 
-    uint16_t *oldData = malloc(len);
-    uint16_t *newData = malloc(len);
+    uint16_t *old_data = malloc(len);
+    uint16_t *new_data = malloc(len);
 
     uint32_t line_len = finfo.line_length;
 
-    if ((oldData == NULL) || (newData == NULL))
+    if ((old_data == NULL) || (new_data == NULL))
     {
         perrorLog(isDaemon, program, "cannot allocate offscreen buffers");
         exitAndRemovePidFile(EXIT_FAILURE, pfh);
     }
 
-    memset(oldData, 0, finfo.line_length * vinfo.yres);
+    memset(old_data, 0, finfo.line_length * vinfo.yres);
 
     //---------------------------------------------------------------------
 
@@ -390,30 +389,30 @@ main(
 
         vc_dispmanx_resource_read_data(resourceHandle,
                                        &rect,
-                                       newData,
+                                       new_data,
                                        line_len);
 
         // normal scaled copy mode
-        uint16_t *fbIter = framebuffer;
-        uint16_t *frontCopyIter = newData;
-        uint16_t *backCopyIter = oldData;
+        uint16_t *fb1_pixel = fb1_data;
+        uint16_t *new_pixel = new_data;
+        uint16_t *old_pixel = old_data;
 
         uint32_t pixel;
         for (pixel = 0 ; pixel < pixels ; pixel++)
         {
-            if (*frontCopyIter != *backCopyIter)
+            if (*new_pixel != *old_pixel)
             {
-                *fbIter = *frontCopyIter;
+                *fb1_pixel = *new_pixel;
             }
 
-            ++frontCopyIter;
-            ++backCopyIter;
-            ++fbIter;
+            ++new_pixel;
+            ++old_pixel;
+            ++fb1_pixel;
         }
 
-        uint16_t *tmp = oldData;
-        oldData = newData;
-        newData = tmp;
+        uint16_t *tmp = old_data;
+        old_data = new_data;
+        new_data = tmp;
 
         //-----------------------------------------------------------------
 
@@ -440,13 +439,13 @@ main(
 
     //---------------------------------------------------------------------
 
-    free(newData);
-    free(oldData);
+    free(new_data);
+    free(old_data);
 
-    memset(framebuffer, 0, finfo.smem_len);
-    munmap(framebuffer, finfo.smem_len);
+    memset(fb1_data, 0, finfo.smem_len);
+    munmap(fb1_data, finfo.smem_len);
 
-    close(fbfd);
+    close(fb1);
 
     //---------------------------------------------------------------------
 
