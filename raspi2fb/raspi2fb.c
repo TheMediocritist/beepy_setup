@@ -310,7 +310,7 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint16_t *fb1_data = mmap(0,
+    uint8_t *fb1_data = mmap(0,
                          finfo.smem_len,
                          PROT_READ | PROT_WRITE,
                          MAP_SHARED,
@@ -344,8 +344,8 @@ main(
     // create offscreen buffers for old & new data storage
     uint32_t len = finfo.smem_len;
 
-    uint16_t *old_data = malloc(len);
-    uint16_t *new_data = malloc(len);
+    uint8_t *old_data = malloc(len);
+    uint8_t *new_data = malloc(len);
 
     uint32_t line_len = finfo.line_length;
 
@@ -393,9 +393,9 @@ main(
                                        line_len);
 
         // normal scaled copy mode
-        uint16_t *fb1_pixel = fb1_data;
-        uint16_t *new_pixel = new_data;
-        uint16_t *old_pixel = old_data;
+        uint8_t *fb1_pixel = fb1_data;
+        uint8_t *new_pixel = new_data;
+        uint8_t *old_pixel = old_data;
 
         uint32_t pixel;
         for (pixel = 0 ; pixel < pixels ; pixel++)
@@ -410,7 +410,7 @@ main(
             ++fb1_pixel;
         }
 
-        uint16_t *tmp = old_data;
+        uint8_t *tmp = old_data;
         old_data = new_data;
         new_data = tmp;
 
