@@ -429,14 +429,14 @@ main(
 
     //---------------------------------------------------------------------
 
-    //uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
-    uint8_t len = copyRect ? (info.width * info.height) : finfo.smem_len;
+    uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
+    //uint8_t len = copyRect ? (info.width * info.height) : finfo.smem_len;
 
     uint8_t *backCopyP = malloc(len);
     uint8_t *frontCopyP = malloc(len);
 
-    //uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
-    uint8_t line_len = copyRect ? (info.width) : finfo.line_length;
+    uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
+    //uint8_t line_len = copyRect ? (info.width) : finfo.line_length;
 
     if ((backCopyP == NULL) || (frontCopyP == NULL))
     {
