@@ -408,7 +408,7 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint8_t image_ptr;
+    uint32_t image_ptr;
 
     DISPMANX_RESOURCE_HANDLE_T resourceHandle;
     VC_RECT_T rect;
