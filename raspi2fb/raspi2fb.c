@@ -414,13 +414,13 @@ main(
     VC_RECT_T rect;
 
     if (copyRect) {
-        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
+        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_8BPP,
                                                      info.width,
                                                      info.height,
                                                      &image_ptr);
         vc_dispmanx_rect_set(&rect, 0, 0, info.width, info.height);
     } else {
-        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
+        resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_8BPP,
                                                      vinfo.xres,
                                                      vinfo.yres,
                                                      &image_ptr);
@@ -429,12 +429,14 @@ main(
 
     //---------------------------------------------------------------------
 
-    uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
+    //uint32_t len = copyRect ? (info.width * info.height * 2) : finfo.smem_len;
+    uint32_t len = copyRect ? (info.width * info.height) : finfo.smem_len;
 
     uint16_t *backCopyP = malloc(len);
     uint16_t *frontCopyP = malloc(len);
 
-    uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
+    //uint32_t line_len = copyRect ? (info.width * 2) : finfo.line_length;
+    uint32_t line_len = copyRect ? (info.width) : finfo.line_length;
 
     if ((backCopyP == NULL) || (frontCopyP == NULL))
     {
@@ -499,12 +501,12 @@ main(
         if (copyRect)
         {
             // rectangle copying mode - eliminated double buffering, not sure why it is done in 'normal' mode
-            for (uint16_t pixel_y = 0 ; pixel_y < vinfo.yres ; pixel_y++)
+            for (uint8_t pixel_y = 0 ; pixel_y < vinfo.yres ; pixel_y++)
             {
-                uint16_t* rowIter = frontCopyP + ((pixel_y + copyRectY) * info.width) + copyRectX;
-                uint16_t* fbIter = fbp + (pixel_y * vinfo.xres);
+                uint8_t* rowIter = frontCopyP + ((pixel_y + copyRectY) * info.width) + copyRectX;
+                uint8_t* fbIter = fbp + (pixel_y * vinfo.xres);
 
-                for (uint16_t pixel_x = 0 ; pixel_x < vinfo.xres ; pixel_x++)
+                for (uint8_t pixel_x = 0 ; pixel_x < vinfo.xres ; pixel_x++)
                 {
                     *(fbIter++) = *(rowIter++);
                 }
@@ -513,11 +515,11 @@ main(
         else
         {
             // normal scaled copy mode
-            uint16_t *fbIter = fbp;
-            uint16_t *frontCopyIter = frontCopyP;
-            uint16_t *backCopyIter = backCopyP;
+            uint8_t *fbIter = fbp;
+            uint8_t *frontCopyIter = frontCopyP;
+            uint8_t *backCopyIter = backCopyP;
 
-            uint32_t pixel;
+            uint8_t pixel;
             for (pixel = 0 ; pixel < pixels ; pixel++)
             {
                 if (*frontCopyIter != *backCopyIter)
@@ -530,7 +532,7 @@ main(
                 ++fbIter;
             }
 
-            uint16_t *tmp = backCopyP;
+            uint8_t *tmp = backCopyP;
             backCopyP = frontCopyP;
             frontCopyP = tmp;
         }
