@@ -251,9 +251,9 @@ main(
 	if (vc_dispmanx_display_get_info(display, &info) != 0)
 	{
 		messageLog(isDaemon,
-				   program,
-				   LOG_ERR,
-				   "cannot get display dimensions");
+		   program,
+		   LOG_ERR,
+		   "cannot get display dimensions");
 		exitAndRemovePidFile(EXIT_FAILURE, pfh);
 	}
 
@@ -313,16 +313,15 @@ main(
 	//---------------------------------------------------------------------
 
 	uint8_t *fb1_data = mmap(0,
-						 finfo.smem_len,
-						 PROT_READ | PROT_WRITE,
-						 MAP_SHARED,
-						 fb1,
-						 0);
+ 		finfo.smem_len,
+ 		PROT_READ | PROT_WRITE,
+ 		MAP_SHARED,
+ 		fb1,
+ 		0);
 
 	if (fb1_data == MAP_FAILED)
 	{
 		perrorLog(isDaemon, program, "cannot map framebuffer into memory");
-
 		exitAndRemovePidFile(EXIT_FAILURE, pfh);
 	}
 
@@ -336,9 +335,9 @@ main(
 	VC_RECT_T rect;
 
 	resourceHandle = vc_dispmanx_resource_create(VC_IMAGE_RGB565,
-													vinfo.xres,
-													vinfo.yres,
-													&image_ptr);
+		vinfo.xres,
+		vinfo.yres,
+		&image_ptr);
 	vc_dispmanx_rect_set(&rect, 0, 0, vinfo.xres, vinfo.yres);
 
 	//---------------------------------------------------------------------
@@ -362,13 +361,13 @@ main(
 	//---------------------------------------------------------------------
 
 	messageLog(isDaemon,
-				program,
-				LOG_INFO,
-				"raspi2fb normal scaling mode, copying from source fb[%dx%d] to dest fb [%dx%d]",
-				info.width,
-				info.height,
-				vinfo.xres,
-				vinfo.yres);
+		program,
+		LOG_INFO,
+		"raspi2fb normal scaling mode, copying from source fb[%dx%d] to dest fb [%dx%d]",
+		info.width,
+		info.height,
+		vinfo.xres,
+		vinfo.yres);
 
 	//---------------------------------------------------------------------
 
@@ -398,9 +397,9 @@ main(
 		vc_dispmanx_snapshot(display, resourceHandle, 0);
 
 		vc_dispmanx_resource_read_data(resourceHandle,
-									   &rect,
-									   new_data,
-									   line_len*2);  // because source is 16 bit 
+			&rect,
+			new_data,
+			line_len*2);  // because source is 16 bit 
 
 		// load pixel data 
 		uint8_t *fb1_pixel = fb1_data;
@@ -410,78 +409,72 @@ main(
 		uint32_t pixel;
 		for (pixel = 0 ; pixel < pixels ; pixel++)
 		{   
-            uint8_t red = ((*new_pixel >> 8) & 0xF8);
-            uint8_t green = ((*new_pixel >> 3) & 0xFC);
-            uint8_t blue = ((*new_pixel << 3) & 0xF8);
-            int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
-            // uint8_t red = ((*new_pixel >> 11) & 0x1F) * 8;
-            // uint8_t green = ((*new_pixel >> 5) & 0x3F) * 4;
-            // uint8_t blue = (*new_pixel & 0x1F) * 8;
-            // int grayscale = (int)(red * 0.3 + green * 0.6 + blue * 0.1);
-            //grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
+			uint8_t red = ((*new_pixel >> 8) & 0xF8);
+			uint8_t green = ((*new_pixel >> 3) & 0xFC);
+			uint8_t blue = ((*new_pixel << 3) & 0xF8);
+			int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
+			//grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
 
-            uint8_t onebit = 255;
+			uint8_t onebit = 255;
 
-            if (pixel == 1){
-                DEBUG_INT(*fb1_pixel);
-                DEBUG_INT(*new_pixel);
-                DEBUG_INT(*old_pixel);
-                DEBUG_INT(red);
-                DEBUG_INT(green);
-                DEBUG_INT(blue);
-                DEBUG_INT(grayscale);
-                DEBUG_INT(onebit);
-            }
+			if (pixel == 1){
+				DEBUG_INT(*fb1_pixel);
+				DEBUG_INT(*new_pixel);
+				DEBUG_INT(*old_pixel);
+				DEBUG_INT(red);
+				DEBUG_INT(green);
+				DEBUG_INT(blue);
+				DEBUG_INT(grayscale);
+				DEBUG_INT(onebit);
+			}
 
-            // get row & column values for current pixel
-            uint8_t column = pixel % 400;
-            uint8_t row = pixel / 400 + 1;
-            int colMod = column % 2;
-            int rowMod = row % 2;
+			// get row & column values for current pixel
+			uint8_t column = pixel % 400;
+			uint8_t row = pixel / 400 + 1;
+			int colMod = column % 2;
+			int rowMod = row % 2;
 
-            // apply 1-bit dither (white/light/midtone/dark/black)
-            // onebit is set to white already
-            if (grayscale <= 120)
-            {
-                onebit = 0;
-            }
-            else if (grayscale <= 150) // dark gray
-            {
-                if (colMod == 0 || rowMod == 0)
-                {
-                    onebit = 0;
-                }
-            }
-            else if (grayscale <= 180) // midtone gray (checkerboard)
-            {
-                if ((colMod == 0 && rowMod == 1) || (colMod == 1 && rowMod == 0))
-                {
-                    onebit = 0;
-                }
-            }
-            else if (grayscale <= 210)
-            {
-                if (colMod == 1 && rowMod == 0) // light gray
-                {
-                    onebit = 0;
-                }
-            }
-            // else if (grayscale > 210) // white
+			// apply 1-bit dither (white/light/midtone/dark/black)
+			// onebit is set to white already
+			if (grayscale <= 120)
+			{
+				onebit = 0;
+			}
+			else if (grayscale <= 150) // dark gray
+			{
+				if (colMod == 0 || rowMod == 0)
+				{
+					onebit = 0;
+				}
+			}
+			else if (grayscale <= 180) // midtone gray (checkerboard)
+			{
+				if ((colMod == 0 && rowMod == 1) || (colMod == 1 && rowMod == 0))
+				{
+					onebit = 0;
+				}
+			}
+			else if (grayscale <= 210)
+			{
+				if (colMod == 1 && rowMod == 0) // light gray
+				{
+					onebit = 0;
+				}
+			}
+			// else if (grayscale > 210) // white
 
-
-            if (pixel == 1){
-                DEBUG_INT(onebit);
-            }
+			if (pixel == 1){
+				DEBUG_INT(onebit);
+			}
 
 			if (onebit != *old_pixel)
 			{
 				*fb1_pixel = onebit;
 			}
-
 			// Move to the next pixel
-            ++fb1_pixel;// += sizeof(uint8_t);
-            ++new_pixel;// += sizeof(uint16_t) / sizeof(uint8_t);
-            ++old_pixel;// += sizeof(uint8_t);
+			++fb1_pixel;// += sizeof(uint8_t);
+			++new_pixel;// += sizeof(uint16_t) / sizeof(uint8_t);
+			++old_pixel;// += sizeof(uint8_t);
 		}
 
 		uint8_t *tmp = old_data;
