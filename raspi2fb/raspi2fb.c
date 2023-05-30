@@ -409,9 +409,70 @@ main(
 		uint32_t pixel;
 		for (pixel = 0 ; pixel < pixels ; pixel++)
 		{
-			if (*new_pixel != *old_pixel)
+            uint8_t red = (*new_pixel >> 5) & 0x07;
+            uint8_t green = (*new_pixel >> 2) & 0x07;
+            uint8_t blue = (*new_pixel & 0x03) * 85; // Scale the 2-bit value to 0-255 range
+
+            // Scale the 3-bit values to 0-255 range
+            red = (red << 5) | (red << 2) | (red >> 1);
+            green = (green << 5) | (green << 2) | (green >> 1);
+            blue = (blue << 6) | (blue << 4) | (blue << 2) | blue;
+
+            int grayscale = (int)(red * 0.2 + green * 0.7 + blue * 0.1);
+            grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
+
+            uint8_t onebit = 255;
+
+            // get row & column values for current pixel
+            uint8_t column = pixel % 400;
+            uint8_t row = pixel / 400 + 1;
+            int colMod = column % 2;
+            int rowMod = row % 2;
+
+            if (pixel == 200){
+                DEBUG_INT(red);
+                DEBUG_INT(green);
+                DEBUG_INT(blue);
+                DEBUG_INT(grayscale);
+            }
+
+            // apply 1-bit dither (white/light/midtone/dark/black)
+            // onebit is set to white already
+            if (grayscale <= 60)
+            {
+                onebit = 0;
+            }
+            else if (grayscale <= 97) // dark gray
+            {
+                if (colMod == 0 || rowMod == 0)
+                {
+                    onebit = 0;
+                }
+            }
+            else if (grayscale <= 158) // midtone gray (checkerboard)
+            {
+                if ((colMod == 0 && rowMod == 1) || (colMod == 1 && rowMod == 0))
+                {
+                    onebit = 0;
+                }
+            }
+            else if (grayscale <= 194)
+            {
+                if (colMod == 1 && rowMod == 0) // light gray
+                {
+                    onebit = 0;
+                }
+            }
+            // else if (grayscale >= 204) // white
+
+
+            if (pixel == 200){
+                DEBUG_INT(onebit);
+            }
+
+			if (onebit != *old_pixel)
 			{
-				*fb1_pixel = *new_pixel;
+				*fb1_pixel = onebit;
 			}
 
 			new_pixel+=2; // because source is 16 bit
