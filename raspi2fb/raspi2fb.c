@@ -61,6 +61,7 @@
 #define DEFAULT_DISPLAY_NUMBER 0
 #define DEFAULT_FPS 30
 #define DEBUG_INT(x) printf( #x " at line %d; result: %d\n", __LINE__, x)
+#define DEBUG_C(x) printf( #x " at line %d; result: %c\n", __LINE__, x)
 
 //-------------------------------------------------------------------------
 
@@ -346,7 +347,7 @@ main(
 	uint32_t len = finfo.smem_len;
 
 	uint8_t *old_data = malloc(len);
-	uint8_t *new_data = malloc(len);
+	uint16_t *new_data = malloc(len);
 
 	uint32_t line_len = finfo.line_length;
 
@@ -401,27 +402,36 @@ main(
 									   new_data,
 									   line_len*2);  // because source is 16 bit 
 
-		// normal scaled copy mode
+		// load pixel data 
 		uint8_t *fb1_pixel = fb1_data;
-		uint8_t *new_pixel = new_data;
+		uint16_t *new_pixel = new_data;
 		uint8_t *old_pixel = old_data;
 
 		uint32_t pixel;
 		for (pixel = 0 ; pixel < pixels ; pixel++)
-		{
-            uint8_t red = (*new_pixel >> 5) & 0x07;
-            uint8_t green = (*new_pixel >> 2) & 0x07;
-            uint8_t blue = (*new_pixel & 0x03) * 85; // Scale the 2-bit value to 0-255 range
-
-            // Scale the 3-bit values to 0-255 range
-            red = (red << 5) | (red << 2) | (red >> 1);
-            green = (green << 5) | (green << 2) | (green >> 1);
-            blue = (blue << 6) | (blue << 4) | (blue << 2) | blue;
-
-            int grayscale = (int)(red * 0.2 + green * 0.7 + blue * 0.1);
-            grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
+		{   
+            uint8_t red = ((*new_pixel >> 8) & 0xF8);
+            uint8_t green = ((*new_pixel >> 3) & 0xFC);
+            uint8_t blue = ((*new_pixel << 3) & 0xF8);
+            int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
+            // uint8_t red = ((*new_pixel >> 11) & 0x1F) * 8;
+            // uint8_t green = ((*new_pixel >> 5) & 0x3F) * 4;
+            // uint8_t blue = (*new_pixel & 0x1F) * 8;
+            // int grayscale = (int)(red * 0.3 + green * 0.6 + blue * 0.1);
+            //grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
 
             uint8_t onebit = 255;
+
+            if (pixel == 1){
+                DEBUG_INT(*fb1_pixel);
+                DEBUG_INT(*new_pixel);
+                DEBUG_INT(*old_pixel);
+                DEBUG_INT(red);
+                DEBUG_INT(green);
+                DEBUG_INT(blue);
+                DEBUG_INT(grayscale);
+                DEBUG_INT(onebit);
+            }
 
             // get row & column values for current pixel
             uint8_t column = pixel % 400;
@@ -429,44 +439,37 @@ main(
             int colMod = column % 2;
             int rowMod = row % 2;
 
-            if (pixel == 200){
-                DEBUG_INT(red);
-                DEBUG_INT(green);
-                DEBUG_INT(blue);
-                DEBUG_INT(grayscale);
-            }
-
             // apply 1-bit dither (white/light/midtone/dark/black)
             // onebit is set to white already
-            if (grayscale <= 60)
+            if (grayscale <= 120)
             {
                 onebit = 0;
             }
-            else if (grayscale <= 97) // dark gray
+            else if (grayscale <= 150) // dark gray
             {
                 if (colMod == 0 || rowMod == 0)
                 {
                     onebit = 0;
                 }
             }
-            else if (grayscale <= 158) // midtone gray (checkerboard)
+            else if (grayscale <= 180) // midtone gray (checkerboard)
             {
                 if ((colMod == 0 && rowMod == 1) || (colMod == 1 && rowMod == 0))
                 {
                     onebit = 0;
                 }
             }
-            else if (grayscale <= 194)
+            else if (grayscale <= 210)
             {
                 if (colMod == 1 && rowMod == 0) // light gray
                 {
                     onebit = 0;
                 }
             }
-            // else if (grayscale >= 204) // white
+            // else if (grayscale > 210) // white
 
 
-            if (pixel == 200){
+            if (pixel == 1){
                 DEBUG_INT(onebit);
             }
 
@@ -475,9 +478,10 @@ main(
 				*fb1_pixel = onebit;
 			}
 
-			new_pixel+=2; // because source is 16 bit
-			++old_pixel;
-			++fb1_pixel;
+			// Move to the next pixel
+            ++fb1_pixel;// += sizeof(uint8_t);
+            ++new_pixel;// += sizeof(uint16_t) / sizeof(uint8_t);
+            ++old_pixel;// += sizeof(uint8_t);
 		}
 
 		uint8_t *tmp = old_data;
