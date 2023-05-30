@@ -1,5 +1,6 @@
 # raspi2fb
 Program to copy the Raspberry Pi display to a secondary framebuffer.
+
 # usage
 
     raspi2fb <options>
@@ -8,11 +9,9 @@ Program to copy the Raspberry Pi display to a secondary framebuffer.
     --device <device> - framebuffer device (default /dev/fb1)
     --display <number> - Raspberry Pi display number (default 0)
     --fps <fps> - set desired frames per second (default 10 frames per second)
-    --copyrect - copy only a rectangle the same size as the dest framebuffer
-    --rectx <x> - copy rectangle from source fb at <x> in copyrect mode (default 0)
-    --recty <y> - copy rectangle from source fb at <y> in copyrect mode (default 0)
     --pidfile <pidfile> - create and lock PID file (if being run as a daemon)
     --once - copy only one time, then exit
+    --dither - convert RGB to black & white ordered 2x2 dither for 1-bit displays (5 shades: black, dark, midtone, light, white)
     --help - print usage and exit
 
 # build prerequisites
