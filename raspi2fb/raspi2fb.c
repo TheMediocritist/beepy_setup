@@ -60,8 +60,10 @@
 #define DEFAULT_DEVICE "/dev/fb1"
 #define DEFAULT_DISPLAY_NUMBER 0
 #define DEFAULT_FPS 30
+#define DEFAULT_DITHER_METHOD "bayer8x8"
 #define DEBUG_INT(x) printf( #x " at line %d; result: %d\n", __LINE__, x)
 #define DEBUG_C(x) printf( #x " at line %d; result: %c\n", __LINE__, x)
+#define DEBUG_STR(x) printf( #x " at line %d; result: %c\n", __LINE__, x)
 
 //-------------------------------------------------------------------------
 
@@ -69,33 +71,26 @@ volatile bool run = true;
 
 //-------------------------------------------------------------------------
 
-void
-printUsage(
-	FILE *fp,
-	const char *name)
+void printUsage( FILE *fp, const char *name)
 {
 	fprintf(fp, "\n");
 	fprintf(fp, "Usage: %s <options>\n", name);
 	fprintf(fp, "\n");
-	fprintf(fp, "    --daemon - start in the background as a daemon\n");
-	fprintf(fp, "    --device <device> - framebuffer device");
-	fprintf(fp, " (default %s)\n", DEFAULT_DEVICE);
-	fprintf(fp, "    --display <number> - Raspberry Pi display number");
-	fprintf(fp, " (default %d)\n", DEFAULT_DISPLAY_NUMBER);
-	fprintf(fp, "    --fps <fps> - set desired frames per second");
-	fprintf(fp, " (default %d frames per second)\n", DEFAULT_FPS);
-	fprintf(fp, "    --pidfile <pidfile> - create and lock PID file");
-	fprintf(fp, " (if being run as a daemon)\n");
-	fprintf(fp, "    --once - copy only one time, then exit\n");
-	fprintf(fp, "    --help - print usage and exit\n");
+	fprintf(fp, "Options:\n");
+	fprintf(fp, "  --daemon              Start in the background as a daemon\n");
+	fprintf(fp, "  --device <device>     Framebuffer device (default %s)\n", DEFAULT_DEVICE);
+	fprintf(fp, "  --display <number>    Raspberry Pi display number (default %d)\n", DEFAULT_DISPLAY_NUMBER);
+	fprintf(fp, "  --fps <fps>           Set desired frames per second (default %d)\n", DEFAULT_FPS);
+	fprintf(fp, "  --dithertype <type>   Set dither method (bayer2x2/bayer4x4/bayer8x8/bayer16x16) (default %s)\n", DEFAULT_DITHER_METHOD);
+	fprintf(fp, "  --pidfile <pidfile>   Create and lock PID file (if being run as a daemon)\n");
+	fprintf(fp, "  --once                Copy only one time, then exit\n");
+	fprintf(fp, "  --help                Print usage and exit\n");
 	fprintf(fp, "\n");
 }
 
 //-------------------------------------------------------------------------
 
-static void
-signalHandler(
-	int signalNumber)
+static void signalHandler(int signalNumber)
 {
 	switch (signalNumber)
 	{
@@ -109,10 +104,7 @@ signalHandler(
 
 //-------------------------------------------------------------------------
 
-int
-main(
-	int argc,
-	char *argv[])
+int main(int argc, char *argv[])
 {
 	const char *program = basename(argv[0]);
 
@@ -121,18 +113,21 @@ main(
 	bool isDaemon = false;
 	bool once = false;
 	uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
+	char *dithermethod = DEFAULT_DITHER_METHOD;
 	const char *pidfile = NULL;
 	const char *device = DEFAULT_DEVICE;
 
+
 	//---------------------------------------------------------------------
 
-	static const char *sopts = "df:hn:p:D:";
+	static const char *sopts = "df:hn:b:p:D:o";
 	static struct option lopts[] = 
 	{
 		{ "daemon", no_argument, NULL, 'd' },
 		{ "fps", required_argument, NULL, 'f' },
 		{ "help", no_argument, NULL, 'h' },
 		{ "display", required_argument, NULL, 'n' },
+		{ "dithertype", required_argument, NULL, 'b'},
 		{ "pidfile", required_argument, NULL, 'p' },
 		{ "device", required_argument, NULL, 'D' },
 		{ "once", no_argument, NULL, 'o' },
@@ -162,6 +157,9 @@ main(
 			case 'h':
 				printUsage(stdout, program);
 				exit(EXIT_SUCCESS);
+				break;
+			case 'b':
+				dithermethod = optarg;
 				break;
 			case 'n':
 				displayNumber = atoi(optarg);
@@ -232,7 +230,51 @@ main(
 		perrorLog(isDaemon, program, "installing SIGTERM signal handler");
 		exitAndRemovePidFile(EXIT_FAILURE, pfh);
 	}
-
+	
+	//---------------------------------------------------------------------
+	
+	const int BAYER2X2[2][2] = { // dithers 4 different patterns plus white
+		{0, 2},
+		{3, 1}
+	};
+	
+	const int BAYER4X4[4][4] = { // dithers 16 different patterns plus white
+		{ 0,  8,  2, 10},
+		{12,  4, 14, 16},
+		{ 3, 11,  1,  9},
+		{15,  7, 13,  5},
+	};
+	
+	const int BAYER8X8[8][8] = { // dithers 64 different patterns plus white
+		{0,  32,  8, 40,  2, 34, 10, 42},
+		{48, 16, 56, 24, 50, 18, 58, 26},
+		{12, 44,  4, 36, 14, 46,  6, 38},
+		{60, 28, 52, 20, 62, 30, 54, 22},
+		{ 3, 35, 11, 43,  1, 33,  9, 41},
+		{51, 19, 59, 27, 49, 17, 57, 25},
+		{15, 47,  7, 39, 13, 45,  5, 37},
+		{63, 31, 55, 23, 61, 29, 53, 21}
+	};
+	
+	const int BAYER16X16[16][16] = {   // dithers 256 different patterns plus white
+		{  0, 191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254}, 
+		{127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127},
+		{ 32, 223,  16, 207,  44, 235,  28, 219,  35, 226,  19, 210,  47, 238,  31, 222},
+		{159,  96, 143,  80, 171, 108, 155,  92, 162,  99, 146,  83, 174, 111, 158,  95},
+		{  8, 199,  56, 247,   4, 195,  52, 243,  11, 202,  59, 250,   7, 198,  55, 246},
+		{135,  72, 183, 120, 131,  68, 179, 116, 138,  75, 186, 123, 134,  71, 182, 119},
+		{ 40, 231,  24, 215,  36, 227,  20, 211,  43, 234,  27, 218,  39, 230,  23, 214},
+		{167, 104, 151,  88, 163, 100, 147,  84, 170, 107, 154,  91, 166, 103, 150,  87},
+		{  2, 193,  50, 241,  14, 205,  62, 253,   1, 192,  49, 240,  13, 204,  61, 252},
+		{129,  66, 177, 114, 141,  78, 189, 126, 128,  65, 176, 113, 140,  77, 188, 125},
+		{ 34, 225,  18, 209,  46, 237,  30, 221,  33, 224,  17, 208,  45, 236,  29, 220},
+		{161,  98, 145,  82, 173, 110, 157,  94, 160,  97, 144,  81, 172, 109, 156,  93},
+		{ 10, 201,  58, 249,   6, 197,  54, 245,   9, 200,  57, 248,   5, 196,  53, 244},
+		{137,  74, 185, 122, 133,  70, 181, 118, 136,  73, 184, 121, 132,  69, 180, 117},
+		{ 42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212},
+		{169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85}
+	};
+	
 	//---------------------------------------------------------------------
 
 	bcm_host_init();
@@ -313,11 +355,11 @@ main(
 	//---------------------------------------------------------------------
 
 	uint8_t *fb1_data = mmap(0,
- 		finfo.smem_len,
- 		PROT_READ | PROT_WRITE,
- 		MAP_SHARED,
- 		fb1,
- 		0);
+		 finfo.smem_len,
+		 PROT_READ | PROT_WRITE,
+		 MAP_SHARED,
+		 fb1,
+		 0);
 
 	if (fb1_data == MAP_FAILED)
 	{
@@ -391,21 +433,24 @@ main(
 	while (run)
 	{
 		gettimeofday(&start_time, NULL);
-
+		
 		//-----------------------------------------------------------------
-
+		
 		vc_dispmanx_snapshot(display, resourceHandle, 0);
-
 		vc_dispmanx_resource_read_data(resourceHandle,
 			&rect,
 			new_data,
-			line_len*2);  // because source is 16 bit 
-
+			line_len*2);  // because source is 16 bit <- but what if this isn't the case?
+			
 		// load pixel data 
 		uint8_t *fb1_pixel = fb1_data;
 		uint16_t *new_pixel = new_data;
 		uint8_t *old_pixel = old_data;
-
+		
+		// just for debug - check min and max grayscale values per frame
+		int mingray = 128;
+		int maxgray = 128;
+		
 		uint32_t pixel;
 		for (pixel = 0 ; pixel < pixels ; pixel++)
 		{   
@@ -413,70 +458,66 @@ main(
 			uint8_t green = ((*new_pixel >> 3) & 0xFC);
 			uint8_t blue = ((*new_pixel << 3) & 0xF8);
 			int grayscale = (int)(red * 0.299 + green * 0.587 + blue * 0.114);
-			//grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
-
-			uint8_t onebit = 255;
-
-			if (pixel == 1){
-				DEBUG_INT(*fb1_pixel);
-				DEBUG_INT(*new_pixel);
-				DEBUG_INT(*old_pixel);
-				DEBUG_INT(red);
-				DEBUG_INT(green);
-				DEBUG_INT(blue);
-				DEBUG_INT(grayscale);
-				DEBUG_INT(onebit);
-			}
-
+			//int grayscale = (int)((red + green + blue)/3);
+			//int grayscale = (int)(red * 0.3 + green * 0.4 + blue * 0.2);
+			grayscale = grayscale > 255 ? 255 : grayscale; // Ensure grayscale value is within the range [0, 255]
+			
+			// just for debug
+			mingray = grayscale < mingray ? grayscale : mingray;
+			maxgray = grayscale > maxgray ? grayscale : maxgray;
+			
+			// this is what we write to the framebuffer as either 0 or 255
+			uint8_t onebit = 0;
+			
 			// get row & column values for current pixel
-			uint8_t column = pixel % 400;
+			uint8_t column = pixel % 400 + 1;
 			uint8_t row = pixel / 400 + 1;
-			int colMod = column % 2;
-			int rowMod = row % 2;
-
-			// apply 1-bit dither (white/light/midtone/dark/black)
-			// onebit is set to white already
-			if (grayscale <= 120)
+			
+			// apply the selected dither
+			if (strcmp(dithermethod, "bayer2x2") == 0)
 			{
-				onebit = 0;
+				int colMod = column % 2;
+				int rowMod = row % 2;
+				onebit = ((grayscale * 4 / 255) > BAYER2X2[rowMod][colMod]) ? 255 : onebit;
 			}
-			else if (grayscale <= 150) // dark gray
+			else if (strcmp(dithermethod, "bayer4x4") == 0)
 			{
-				if (colMod == 0 || rowMod == 0)
-				{
-					onebit = 0;
-				}
+				int colMod = column % 4;
+				int rowMod = row % 4;
+				onebit = ((grayscale * 16 / 255) > BAYER4X4[rowMod][colMod]) ? 255 : onebit;
 			}
-			else if (grayscale <= 180) // midtone gray (checkerboard)
+			else if (strcmp(dithermethod, "bayer8x8") == 0)
 			{
-				if ((colMod == 0 && rowMod == 1) || (colMod == 1 && rowMod == 0))
-				{
-					onebit = 0;
-				}
+				int colMod = column % 8;
+				int rowMod = row % 8;
+				onebit = ((grayscale * 64 / 255) > BAYER8X8[rowMod][colMod]) ? 255 : onebit;
 			}
-			else if (grayscale <= 210)
+			else if (strcmp(dithermethod, "bayer16x16") == 0)
 			{
-				if (colMod == 1 && rowMod == 0) // light gray
-				{
-					onebit = 0;
-				}
+				int colMod = column % 16;
+				int rowMod = row % 16;
+				onebit = ((grayscale * 256 / 255) > BAYER16X16[rowMod][colMod]) ? 255 : onebit;
 			}
-			// else if (grayscale > 210) // white
-
-			if (pixel == 1){
-				DEBUG_INT(onebit);
+			else
+			{
+				onebit = grayscale > 120 ? 255 : onebit;
 			}
-
+			
+			// update framebuffer if pixel has changed
 			if (onebit != *old_pixel)
 			{
 				*fb1_pixel = onebit;
 			}
+			
 			// Move to the next pixel
 			++fb1_pixel;// += sizeof(uint8_t);
 			++new_pixel;// += sizeof(uint16_t) / sizeof(uint8_t);
 			++old_pixel;// += sizeof(uint8_t);
 		}
-
+		
+		// DEBUG_INT(mingray);
+		// DEBUG_INT(maxgray);
+		
 		uint8_t *tmp = old_data;
 		old_data = new_data;
 		new_data = tmp;
