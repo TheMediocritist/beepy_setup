@@ -38,7 +38,11 @@ fbset -fb /dev/fb0 -i
 fbset -fb /dev/fb1 -i
 
 echo "Inverting terminal display..."
-setterm --inversescreen=on --bold=off -store
+# except we don't need to invert it
+# setterm --inversescreen=on --bold=off -store
+setterm -foreground black -background white
+# this changes the background white to true white (instead of gray):
+echo -en "\e]P7ffffff"
 fbset -fb /dev/fb1 -accel true
 
 echo "Connecting to i4 bluetooth keyboard..."
