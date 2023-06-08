@@ -44,6 +44,7 @@ setterm -foreground black -background white
 # this changes the background white to true white (instead of gray):
 echo -en "\e]P7ffffff"
 fbset -fb /dev/fb1 -accel true
+setterm -store
 
 echo "Connecting to i4 bluetooth keyboard..."
 # echo "connect 26:01:06:00:04:63 \nquit" | bluetoothctl
