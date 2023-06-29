@@ -9,11 +9,11 @@ sudo raspi-config nonint do_boot_behaviour B2 || { echo "Error: Failed to enable
 echo "Updating and installing dependencies..."
 sudo apt-get -y install git raspberrypi-kernel-headers < "/dev/null" || { echo "Error: Failed to install dependencies."; exit 1; }
 
-echo "Customising ~/.bashrc..."
-sudo cp ~/beepberry_setup/misc/.bashrc ~/
-
 echo "Downloading Beepberry software..."
 git clone https://github.com/TheMediocritist/beepberry_setup
+
+echo "Customising ~/.bashrc..."
+sudo cp ~/beepberry_setup/misc/.bashrc ~/
 
 echo "Compiling and installing display driver..."
 cd ~/beepberry_setup/display/
@@ -24,42 +24,41 @@ echo 'sharp' | sudo tee -a /etc/modules
 dtc -@ -I dts -O dtb -o sharp.dtbo sharp.dts || { echo "Error: Failed to compile device tree."; exit 1; }
 sudo cp sharp.dtbo /boot/overlays
 echo -e "framebuffer_width=400\nframebuffer_height=240\ndtoverlay=sharp" | sudo tee -a /boot/config.txt
-sudo sed -i ' 1 s/.*/& fbcon=map:10 fbcon=font:VGA8x16/' /boot/cmdline.txt || { echo "Error: Failed to modify cmdline.txt."; exit 1; }
+# Leave fbcon on /dev/fb0 because we're using snag
+# sudo sed -i ' 1 s/.*/& fbcon=map:10 fbcon=font:VGA8x16/' /boot/cmdline.txt || { echo "Error: Failed to modify cmdline.txt."; exit 1; }
+sudo sed -i ' 1 s/.*/& fbcon=font:VGA8x16/' /boot/cmdline.txt || { echo "Error: Failed to modify cmdline.txt."; exit 1; }
 
-# No keyboard for now
-# echo "Compiling and installing keyboard device driver..."
-# cd ~/
-# git clone https://github.com/w4ilun/bbqX0kbd_driver.git || { echo "Error: Failed to clone keyboard driver repository."; exit 1; }
-# cd ~/beepberry_setup/keyboard
-# ./installer.sh --BBQ20KBD_TRACKPAD_USE BBQ20KBD_TRACKPAD_AS_KEYS --BBQX0KBD_INT BBQX0KBD_USE_INT || { echo "Error: Failed to install keyboard device driver."; exit 1; }
+echo "Compiling and installing keyboard device driver..."
+cd ~/
+git clone https://github.com/w4ilun/bbqX0kbd_driver.git || { echo "Error: Failed to clone keyboard driver repository."; exit 1; }
+cd ~/beepberry_setup/keyboard
+./installer.sh --BBQ20KBD_TRACKPAD_USE BBQ20KBD_TRACKPAD_AS_MOUSE --BBQX0KBD_INT BBQX0KBD_USE_INT || { echo "Error: Failed to install keyboard device driver."; exit 1; }
 
 echo "Checking framebuffers..."
 fbset -fb /dev/fb0 -i
 fbset -fb /dev/fb1 -i
+fbset -fb /dev/fb0 -g 400 240 400 240 16
+# to take effect every boot:
+# fbset >>/etc/local.fb.modes
+# echo -e "fbset -db /etc/local.fb.modes --all "name of mode"" | sudo tee -a /etc/rc.local
 
-echo "Inverting terminal display..."
-# except we don't need to invert it
-# setterm --inversescreen=on --bold=off -store
+echo "Setting terminal to display black text on white background..."
 setterm -foreground black -background white
 # this changes the background white to true white (instead of gray):
-echo -en "\e]P7ffffff"
-fbset -fb /dev/fb1 -accel true
+echo -e "\e]P7ffffff"
 setterm -store
 
-echo "Connecting to i4 bluetooth keyboard..."
-# echo "connect 26:01:06:00:04:63 \nquit" | bluetoothctl
-
-echo "Installing raspi2fb..."
+echo "snag..."
 sudo apt-get -y install cmake 
 sudo apt-get -y install libbsd-dev
-cd ~/beepberry_setup/raspi2fb/
+cd ~/beepberry_setup/snag/
 mkdir build
 cd build
 cmake ..
 make
 sudo make install
-sudo cp ../raspi2fb.init.d /etc/init.d/raspi2fb
-sudo update-rc.d raspi2fb defaults
+sudo cp ../snag.init.d /etc/init.d/snag
+sudo update-rc.d snag defaults
 
 echo "Rebooting..."
-sudo shutdown -r now || { echo "Error: Failed to reboot."; exit 1; }
+sudo reboot || { echo "Error: Failed to reboot."; exit 1; }
