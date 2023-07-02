@@ -290,7 +290,7 @@ static int sharp_probe(struct spi_device *spi) {
   if (!screen) return -ENOMEM;
   
   spi->bits_per_word  = 8;
-  spi->max_speed_hz   = 3200000; // Testing higher speed
+  spi->max_speed_hz   = 8000000; // Testing higher speed
   
   screen->spi	= spi;
   

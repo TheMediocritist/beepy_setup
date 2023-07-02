@@ -24,13 +24,14 @@ echo 'sharp' | sudo tee -a /etc/modules
 dtc -@ -I dts -O dtb -o sharp.dtbo sharp.dts || { echo "Error: Failed to compile device tree."; exit 1; }
 sudo cp sharp.dtbo /boot/overlays
 echo -e "framebuffer_width=400\nframebuffer_height=240\ndtoverlay=sharp" | sudo tee -a /boot/config.txt
+echo -e "hdmi_force_hotplug=1\nhdmi_cvt 400 240 60 1 0 0 0\nhdmi_mode=87\nhdmi_group=2" | sudo tee -a /boot/config.txt
+
 # Leave fbcon on /dev/fb0 because we're using snag
 # sudo sed -i ' 1 s/.*/& fbcon=map:10 fbcon=font:VGA8x16/' /boot/cmdline.txt || { echo "Error: Failed to modify cmdline.txt."; exit 1; }
 sudo sed -i ' 1 s/.*/& fbcon=font:VGA8x16/' /boot/cmdline.txt || { echo "Error: Failed to modify cmdline.txt."; exit 1; }
 
 echo "Compiling and installing keyboard device driver..."
 cd ~/
-git clone https://github.com/w4ilun/bbqX0kbd_driver.git || { echo "Error: Failed to clone keyboard driver repository."; exit 1; }
 cd ~/beepberry_setup/keyboard
 ./installer.sh --BBQ20KBD_TRACKPAD_USE BBQ20KBD_TRACKPAD_AS_MOUSE --BBQX0KBD_INT BBQX0KBD_USE_INT || { echo "Error: Failed to install keyboard device driver."; exit 1; }
 
