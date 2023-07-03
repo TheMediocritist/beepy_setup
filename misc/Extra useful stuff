@@ -1,6 +1,8 @@
 Pre-compiled love2d for Raspberry Pi Zero on Buster:
 
 https://files.retropie.org.uk/binaries/buster/rpi1/ports/love.tar.gz
+And minivmac
+https://files.retropie.org.uk/binaries/bullseye/rpi1/kms/emulators/minivmac.tar.gz.asc 
 
 Installing mgba - instructions on Github don't work, but this does
 mkdir build
