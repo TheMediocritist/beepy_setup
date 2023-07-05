@@ -1,3 +1,6 @@
+setterm from ssh:
+setterm -term linux -back white -fore black --inversescreen=off -clear > /dev/tty0 -store
+
 Pre-compiled love2d for Raspberry Pi Zero on Buster:
 
 https://files.retropie.org.uk/binaries/buster/rpi1/ports/love.tar.gz
