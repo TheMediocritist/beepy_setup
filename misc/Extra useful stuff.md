@@ -15,6 +15,10 @@ wget https://files.retropie.org.uk/binaries/bullseye/rpi1/kms/emulators/minivmac
 sudo apt-get install libdrm-tests
 modetest -c
 ```
+### Also useful
+```
+vcgencmd dispmanx_list
+```
 ### Installing mgba - instructions on Github don't work, but this does
 ```
 mkdir build
