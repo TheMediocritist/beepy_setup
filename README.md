@@ -6,3 +6,8 @@ setup script
 ```
 curl -s https://raw.githubusercontent.com/TheMediocritist/beepberry_setup/main/setup.sh | bash
 ```
+
+V2 setup script
+```
+curl -s https://raw.githubusercontent.com/TheMediocritist/beepberry_setup/main/newsetup.sh | bash
+```
