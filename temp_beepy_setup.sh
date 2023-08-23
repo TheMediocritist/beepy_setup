@@ -15,6 +15,7 @@ git clone https://github.com/ardangelo/sharp-drm-driver
 cd sharp-drm-driver
 make
 sudo make install
+sudo sed -i 's/8x8/8x16/' /boot/cmdline.txt
 
 echo "Compiling and installing keyboard device driver..."
 cd ~/
