@@ -112,6 +112,11 @@ if ! shopt -oq posix; then
   fi
 fi
 
+# Launch tmux
+if command -v tmux &> /dev/null && [ -z "$TMUX" ]; then
+    tmux attach -t default || tmux new -s default
+fi
+
 # BEEPBERRY PROFILE START
 
 function getIPAddress() {
@@ -223,7 +228,7 @@ function beepberry_welcome() {
                 out+="${fgwht}Temp..........: CPU:${cpuTempC}° GPU:${gpuTempC}°"
                 ;;
             10)
-                out+="${fgwht}SQFMI x Beeper: beepberry.sqfmi.com"
+                out+="${fgwht}SQFMI x Beeper: beepy.sqfmi.com"
                 ;;
         esac
         out+="${rst}\n"
@@ -233,3 +238,4 @@ function beepberry_welcome() {
 
 beepberry_welcome
 # BEEPBERRY PROFILE END
+
