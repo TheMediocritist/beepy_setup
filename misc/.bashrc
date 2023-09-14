@@ -168,7 +168,7 @@ function beepberry_welcome() {
     local fgblu="${rst}$(tput setaf 4)" # Blue
     local fgpur="${rst}$(tput setaf 5)" # Purple
     local fgcyn="${rst}$(tput setaf 6)" # Cyan
-    local fgwht="${rst}$(tput setaf 7)" # White
+    local fgwht="${rst}$(tput setaf 15)" # White
 
     local bld="$(tput bold)"
     local bfgblk="${bld}$(tput setaf 0)"
@@ -178,7 +178,7 @@ function beepberry_welcome() {
     local bfgblu="${bld}$(tput setaf 4)"
     local bfgpur="${bld}$(tput setaf 5)"
     local bfgcyn="${bld}$(tput setaf 6)"
-    local bfgwht="${bld}$(tput setaf 7)"
+    local bfgwht="${bld}$(tput setaf 15)"
 
     local logo=(
         ""
